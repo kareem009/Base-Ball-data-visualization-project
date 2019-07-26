@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script src="https://d3js.org/d3.v3.js"></script>
+    <script src="http://dimplejs.org/dist/dimple.v2.0.0.js"></script>
+    <link href="https://fonts.googleapis.com/css?family=Playfair+Display|Roboto" rel="stylesheet">
+    
+    <style>
+      circle {
+        fill: grey;
+        stroke: dimgrey;
+        opacity: 0.25;
+      }
+
+      .line {
+        fill: none;
+        stroke: steelblue;
+        stroke-width: 4px;
+      }
+
+      h1 {
+        text-align: center;
+        font-family: 'Playfair Display', serif;
+      }
+
+      #chart, aside {
+        float: left;
+      }
+
+      aside {
+        max-width: 25%;
+      }
+
+      p {
+        vertical-align: top;
+        font-family: 'Roboto', sans-serif;
+      }
+
+      #centerWrapper {
+        max-width: 1000px;
+        margin: auto;
+      }
+
+      #callout {
+        font-weight: bold;
+        text-align: center;
+        font-family: 'Roboto', sans-serif;
+      }
+
+      text {
+        font-family: 'Roboto', sans-serif;
+      }
+    </style>
+
+    <script type="text/javascript">
+      var defaultText = 'Batting Average and Home Runs are two statistics used to measure ' +
+                        'a baseball player\'s performance. By charting the two together, we ' +
+                        'can see that if a player performs well in one area, they are likely ' +
+                        'to do well in the other.';
+      var rSquaredText = 'r² is a value that measures how closely related two variables are. ' +
+                         'Here we have an r² of 0.909, which means that 90.9% of a change in ' +
+                         'Batting Average can be explained by a change in Home Runs. An r² ' +
+                         'of 1.0 would mean that all of the points are on the regression line.';
+      var regressionLineText = 'This regression line shows what we would expect a player\'s ' +
+                               'Batting Average to be for a given number of Home Runs.';
+      function updateText(text) {
+      // We only want the callout on the default text,
+      // so we remove it here, and add it later whenever
+      // we render the default text.
+        d3.select('#callout').remove();
+        d3.selectAll('p')
+          .text(text);
+      }
+      function draw(data) {
+        d3.selectAll('body')
+          .append('h1')
+          .text('Relationships in Baseball Performance');
+        
+        var centerWrapper = d3.selectAll('body')
+          .append('div')
+          .attr('id', 'centerWrapper');
+ 
+        var svg = centerWrapper.append('div')
+          .attr('id', 'chart')
+          .append('svg')
+          .attr('width', 590)
+          .attr('height', 400);
+        
+        var chart = new dimple.chart(svg, data);
+        chart.setBounds(60, 30, 500, 330);
+
+        var x = chart.addMeasureAxis('x', 'HR');
+        x.showGridlines = true;
+        x.title = 'Home Runs';
+        x.fontFamily = 'Roboto';
+        x.fontSize = 12;
+
+        var y = chart.addMeasureAxis('y', 'avg');
+        y.showGridlines = false;
+        y.title = 'Batting Average';
+        y.tickFormat = ',.3f';
+        y.fontFamily = 'Roboto';
+        y.fontSize = 12;
+
+        chart.addSeries(['name', ''], dimple.chart.bubble)
+          .toolTipFontFamily = 'Roboto';
+        chart.draw();
+
+        d3.selectAll('circle')
+          .attr('r', 4);
+        
+        // This will be our regression line.
+        var line = d3.svg.line()
+          .x((d) => { return x._scale(d[0]); })
+          .y((d) => { return y._scale(d[1]); });
+
+        svg.append('path')
+          // Use epsilon (0.0001) to prevent math errors
+          // coefficients were calculated using R
+          .datum(d3.range(600).map((x) => { return [x, 0.0156 * Math.log(x + 0.0001) + 0.192]; })) 
+          .attr('class', 'line')
+          .attr('d', line)
+          .on('mouseover', () => { updateText(regressionLineText); })
+          .on('mouseout', () => { updateText(defaultText); addCallout();}); // We only want the callout on the default text
+
+        var r_squared = svg.append('text')
+          .attr('x', x._scale(400))
+          .attr('y', y._scale(0.350))
+          .text('r²=0.909')
+          .on('mouseover', () => { updateText(rSquaredText); })
+          .on('mouseout', () => { updateText(defaultText); addCallout();});
+        
+        var aside = centerWrapper.append('aside');
+
+        aside.append('p')
+          .text(defaultText);
+        
+        function addCallout() {
+          aside.append('div')
+          .attr('id', 'callout')
+          .text('* Hover over for more detail *');
+        };
+        addCallout();
+      }
+    </script>
+  </head>
+  <body>
+  </body>
+  <script type="text/javascript">
+    d3.csv('baseball_data.csv', function(data) {
+      data['HR'] = +data['HR'];
+      data['avg'] = +data['avg'];
+      return data;
+    }, draw);
+  </script>
+</html>
